@@ -1,3 +1,4 @@
+Attribute VB_Name = "modScaleForm"
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' If you can read "Attribute VB_Name = "modScaleForm"" on the line above when already in the
 ' Access VBA editor, please remove this line or the module will not compile.
@@ -11,7 +12,7 @@
 ' GENERAL INFORMATION
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Module     : modScaleForm
-' Version    : 2008-03-10
+' Version    : 2024-12-18
 ' Usable     : From Access 2002 (XP) and up, maybe from Access 2000 and up
 ' Author     : Markus Gruber (markus.gruber@gruber.cc)
 ' Purpose    : Resize Access forms and scale the controls within according to screen resolution
@@ -59,6 +60,8 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' CHANGELOG
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 2024-12-18: .) modScaleForm and clFormWindow are now compatible with 64 bit systems.
+'
 ' 2008-03-10: .) New function PreScale: Can scale forms one time only in design mode to a desired
 '                target resolution, could also be called "static scaling"
 '             .) New function mSFOpenForm: Similar to docmd.openform with following addition: Opens
@@ -125,21 +128,26 @@ Private Type tDisplay
 End Type
 
 
-Private Const DefaultDesignWidth As Long = 1400
-Private Const DefaultDesignHeight As Long = 1050
-Private Const DefaultDesignDPI As Long = 96
+Private Const DefaultDesignWidth As Long = 1920
+Private Const DefaultDesignHeight As Long = 1080
+Private Const DefaultDesignDPI As Long = 120
 Private Const WM_HORZRES As Long = 8
 Private Const WM_VERTRES As Long = 10
 Private Const WM_LOGPIXELSX As Long = 88
 
+#If VBA7 Then
+    Private Declare PtrSafe Function WM_apiGetDC Lib "user32" Alias "GetDC" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function WM_apiReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hWnd As LongPtr, ByVal hdc As LongPtr) As Long
+    Private Declare PtrSafe Function WM_apiGetDeviceCaps Lib "gdi32" Alias "GetDeviceCaps" (ByVal hdc As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function WM_apiGetWindowRect Lib "user32.dll" Alias "GetWindowRect" (ByVal hWnd As LongPtr, lpRect As tRect) As Long
+#Else
+    Private Declare Function WM_apiGetDC Lib "user32" Alias "GetDC" (ByVal hWnd As Long) As Long
+    Private Declare Function WM_apiReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hWnd As Long, ByVal hdc As Long) As Long
+    Private Declare Function WM_apiGetDeviceCaps Lib "gdi32" Alias "GetDeviceCaps" (ByVal hdc As Long, ByVal nIndex As Long) As Long
+    Private Declare Function WM_apiGetWindowRect Lib "user32.dll" Alias "GetWindowRect" (ByVal hWnd As Long, lpRect As tRect) As Long
+#End If
 
-Private Declare Function WM_apiGetDC Lib "user32" Alias "GetDC" (ByVal hWnd As Long) As Long
 
-Private Declare Function WM_apiReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hWnd As Long, ByVal hdc As Long) As Long
-
-Private Declare Function WM_apiGetDeviceCaps Lib "gdi32" Alias "GetDeviceCaps" (ByVal hdc As Long, ByVal nIndex As Long) As Long
-
-Private Declare Function WM_apiGetWindowRect Lib "user32.dll" Alias "GetWindowRect" (ByVal hWnd As Long, lpRect As tRect) As Long 'for getting window sizes
 
 Public arrCtlsScaleForm() As tControl 'public array for control properties, available for all forms
 
@@ -158,7 +166,11 @@ Dim DesignResDPI As Long
 Dim DesignResHeight As Long
 Dim DesignResWidth As Long
 Dim GetScreenResolution As tDisplay
-Dim hDCcaps As Long
+#If VBA7 Then
+    Dim hDCcaps As LongPtr
+#Else
+    Dim hDCcaps As Long
+#End If
 Dim lngRtn As Long
 Dim MonitorResHeightRatio As Single
 Dim MonitorResWidthRatio As Single
@@ -903,3 +915,8 @@ DoCmd.OpenForm FormName, View, FilterName, WhereCondition, DataMode, WindowMode,
 mSFOpenForm = FormName
 
 End Function
+
+
+
+
+
